@@ -6,6 +6,8 @@ import { MatPaginator } from '@angular/material/paginator';
 import { DatePipe } from '@angular/common';
 import { Report2Service } from './report2.service';
 import { SnackbarService } from './snackbar.service';
+import * as XLSX from 'xlsx';
+import * as FileSaver from 'file-saver';
 
 
 @Component({
@@ -16,6 +18,10 @@ import { SnackbarService } from './snackbar.service';
 })
 export class ReportComponent implements OnInit, AfterViewInit {
 
+
+
+  EXCEL_TYPE = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;charset=UTF-8';
+  EXCEL_EXTENSION = '.xlsx';
 
   // / GLOBAL  VARIABLES
     getDistrict:any[]= [];
@@ -33,15 +39,20 @@ export class ReportComponent implements OnInit, AfterViewInit {
      drop1=false;
      drop2=false;
      drop3=false;
-     selectedDistrict:any='';
-     selectedDivision:any='';
-     selectedSubDivision:any='';
+     selDivision:any[]=[];
+     selSubDivision:any[]=[];
+     subDivData:any= '' ;
+     subDivData1:any= '' ;
+
+  
 
 
 
     // COLUMNS FOR TABLE
-   displayedColumns: string[] = ['srNo','complaintNo','location','landmark','stage','reason','reportDate','fromDeputyName','disName', 'potDivision', 'sudName', 'toDeputyName', 'transferDist', 'transferDiv', 'transferSubdiv', 'transferDate','transferRemark'];
-   dataSource = new MatTableDataSource<any>;
+  //  displayedColumns: string[] = ['srNo','complaintNo','location','landmark','stage','reason','reportDate','fromDeputyName','disName', 'potDivision', 'sudName', 'toDeputyName', 'transferDist', 'transferDiv', 'transferSubdiv', 'transferDate','transferRemark'];
+      displayedColumns: string[] = ['srNo','disName', 'potDivision', 'sudName', 'total', 'assign', 'close', 'pending'];
+
+  dataSource = new MatTableDataSource<any>;
 
 
       // TABLE PAGINATION
@@ -65,22 +76,45 @@ export class ReportComponent implements OnInit, AfterViewInit {
            fromDateData:  new FormControl(new Date()),
            toDateData:  new FormControl(new Date()),});
         // /  WHEN DISTRICT SELECTED GETDIVISION WS WILL BE CALLED
-       onChangeDistrict( ){
+       onChangeDistrict(){
+        this.selDivision=[];
          const disData= this.dataForm.get('disData')?.value;
          console.log(disData)
          // proper error handling
-            this.reportService.getDivision(this.userPriv, this.disId,this.divId).subscribe((response:any) => {
+           if(this.userPriv === "0" || this.userPriv === "1"){
+            this.reportService.getselectedDivision(this.userPriv, disData).subscribe((response:any) => {
+              if(!response.error){
+                if(response.status === "Success"){
+                  console.log(response);
+                  this.selDivision=[];
+                  if(response.data.length >  0){
+                    this.selDivision= response.data;
+                    }
+                }
+                else{
+                  this.snackbarService.backendWarningSnackBar("Data not found")
+                  this.selDivision=[];
+                }
+              } });
+
+
+           }
+           else if(this.userPriv === "3"){
+            this.reportService.getDivision(this.userPriv, this.disId, this.divId).subscribe((response:any) => {
             if(!response.error){
                 if(response.status === "Success"){
                   // console.log(response);
-                     this.getSubDivision=[];
+                    //  this.getSubDivision=[];
+                    this.selDivision=[];
                      if(response.data.length >  0){
-                         this.getDivision= response.data;
+                        //  this.getDivision= response.data;
+                        this.selDivision = response.data;
                         }
                 }
                 else{
                   this.snackbarService.backendWarningSnackBar("Data not found")
-                  this.getDivision=[];
+                  // this.getDivision=[];
+                  // this.selDivision=[];
                 }
 
                }
@@ -90,40 +124,129 @@ export class ReportComponent implements OnInit, AfterViewInit {
 
             });
           }
+          }
 
 
 
        onChangeDivision(){
+        console.log('hello');
         const disData= this.dataForm.get('disData')?.value;
         const divisionData = this.dataForm.get('divisionData')?.value;
-
-        console.log(divisionData)
+         console.log(divisionData)
                  // proper error handling
-              this.reportService.getSubDivision(disData,divisionData,this.userPriv, this.disId,this.divId,this.sudId).subscribe((response:any) => {
-              if(!response.error){
-                if(response.status == "Success"){
-                  console.log(response);
-                   if(response.data.length >  0){
-                       this.getSubDivision= response.data;
-                         }
-                        else{
-                           this.snackbarService.errorSnackBar("record not found")
+
+                //  if(this.userPriv === "0" || this.userPriv === "1"){
+                //    this.reportService.getselectedSubDivision(this.userPriv, disData,divisionData).subscribe((response:any) => {
+                //       if(!response.error){
+                //         if(response.status === "Success"){
+                //           console.log(response);
+                //           this.selSubDivision=[];
+                //           if(response.data.length >  0){
+                //             this.selSubDivision= response.data;
+                //             }
+                //         }
+                //         else{
+                //           this.snackbarService.backendWarningSnackBar("Data not found")
+                //           this.selDivision=[];
+                //         }
+                //       }
+
+
+                //    });
+                //   }
+
+                  if(this.userPriv === "0" || this.userPriv === "1" || this.userPriv === "3" ){
+                    console.log('hello1');
+                           if( this.drop1 === false){
+                            this.subDivData=localStorage.getItem('disId');
+
+                           }
+                           else{
+                            this.subDivData= this.dataForm.get('disData')?.value;
+                           }
+                       this.reportService.getSubDivision(this.subDivData,divisionData,this.userPriv).subscribe((response:any) => {
+                          if(!response.error){
+                            if(response.status == "Success"){
+                              console.log(response);
+                              if(response.data.length >  0){
+                      //  this.getSubDivision= response.data;
+                                  this.selSubDivision = response.data;
+                                }
+                                else{
+                                   this.snackbarService.errorSnackBar("record not found")
+                                 }
+                              }
+
+                              else{
+                                this.snackbarService.backendWarningSnackBar("Data not found")
+                                this.selSubDivision=[];
+                              }
                             }
+                            else{
+                              this.snackbarService.warningSnackBar(response.error)
+                            }
+                          });
+
+                        }
+
+
+                 else if(this.userPriv ==="4"){
+                  if( this.drop1 === false){
+                    this.subDivData=localStorage.getItem('disId');
+
+                   }
+                   else{
+                    this.subDivData= this.dataForm.get('disData')?.value;
+                   }
+                  console.log('hello');
+                  this.reportService.getSubDivision1(this.userPriv, this.disId,this.divId,this.sudId).subscribe((response:any) => {
+                     if(!response.error){
+                      if(response.status == "Success"){
+                        console.log(response);
+                         if(response.data.length >  0){
+                            //  this.getSubDivision= response.data;
+                            this.selSubDivision = response.data;
+                               }
+                              else{
+                                 this.snackbarService.errorSnackBar("record not found")
+                                  }
+                       }
+                       else{
+                        this.snackbarService.backendWarningSnackBar("Data not found")
+                        this.selSubDivision=[];
+                      }
+                    }
+                    else{
+                      this.snackbarService.warningSnackBar(response.error)
+                    }
+
+                  });
+
                  }
-                else{
-                  this.snackbarService.backendWarningSnackBar("Data not found")
-                  this.getSubDivision=[];
-                }
-              }
-              else{
-                this.snackbarService.warningSnackBar(response.error)
-              }
-              })
-              }
-          userPriv=localStorage.getItem('usrPriviledge');
+
+           }
+
+           userPriv=localStorage.getItem('usrPriviledge');
            disId=localStorage.getItem('disId');
            divId=localStorage.getItem('divId');
            sudId=localStorage.getItem('sudId');
+
+
+           getAllDistricts(){
+                if(this.userPriv === "0" || this.userPriv === "1"){
+
+                  this.getDistrict=[];
+                    this.reportService.getDistrict().subscribe((response:any) => {
+                    console.log(response);
+                    this.getDistrict= response.data;
+                    console.log(this.getDistrict)
+               });
+
+
+                }
+
+           }
+
 
 
     ngOnInit() {
@@ -131,26 +254,37 @@ export class ReportComponent implements OnInit, AfterViewInit {
             this.drop1=true;
             this.drop2=true;
             this.drop3=true;
-  
+
           }
            else if(this.userPriv === "3"){
             this.drop2=true;
             this.drop3=true;
-            this.onChangeDistrict();
-            this.onChangeDivision();
+             this.onChangeDistrict();
+            // this.onChangeDivision();
            }
             else if(this.userPriv === "4"){
             this.drop3=true;
             this.onChangeDivision();
+
            }
       // only one ws call here- initialized
-      this.getDistrict=[];
-      this.reportService.getDistrict().subscribe((response:any) => {
-      console.log(response);
-      this.getDistrict= response.data;
-      console.log(this.getDistrict)
- });
+
+
+         this.getAllDistricts();
+//       this.getDistrict=[];
+//       this.reportService.getDistrict().subscribe((response:any) => {
+//       console.log(response);
+//       this.getDistrict= response.data;
+//       console.log(this.getDistrict)
+//  });
+
+
   }
+
+
+
+
+
     view(){
       // on search button click
       this.showExcel=true;
@@ -171,7 +305,38 @@ export class ReportComponent implements OnInit, AfterViewInit {
        console.log(fromDateData1)
        console.log(toDateData1);
 
-      this.reportService.getTransferReport(disData, divisionData, subDivisionData, fromDateData1,toDateData1).subscribe((response:any) => {
+
+       if( this.drop1 === false){
+        this.subDivData=localStorage.getItem('disId');
+        console.log(this.subDivData)
+
+       }
+       else{
+        this.subDivData= this.dataForm.get('disData')?.value;
+       }
+
+       if(this.drop2 === false ){
+        //  this.subDivData=localStorage.getItem('disId')
+        this.subDivData1=localStorage.getItem('divId');
+     ;
+      }
+      else{
+
+        // this.subDivData= this.dataForm.get('disData')?.value;
+        this.subDivData1= this.dataForm.get('divisionData')?.value;
+      }
+
+
+      // console.log(this.subDivData);
+
+      // console.log(this.subDivData1)
+      // ;
+      // console.log(subDivisionData);
+
+
+
+
+      this.reportService.getTransferReport( this.subDivData, this.subDivData1, subDivisionData,fromDateData1,toDateData1).subscribe((response:any) => {
       console.log(response);
 
          for(let i=0 ; i<response[0].data.length ; i++){
@@ -188,22 +353,14 @@ export class ReportComponent implements OnInit, AfterViewInit {
         for(let i=0 ; i<this.showData.length ; i++){
          this.data.push({
             "Sr No" : i+1,
-            "Complaint No" : this.showData[i]['complaintId'],
-            "Location" : this.showData[i]['potAddress'],
-            "Landmark" : this.showData[i]['potLandmark'],
-            "Stage" : this.showData[i]['status'],
-            "Reason" : this.showData[i]['potReportComment'],
-            "Report Date" : this.showData[i]['potAssignedAt'],
-            "From Deputy Name" : this.showData[i]['AssignedDeputyEngineer'],
             "District" : this.showData[i]['potDistrict'],
             "Division ": this.showData[i]['potDivision'],
             "SubDivision": this.showData[i]['potSubDivision'],
-            "To Deputy Name": this.showData[i]['TransferDeputyEngineer'],
-            "Transfer District": this.showData[i]['transferredDisName'],
-            "Transfer Division": this.showData[i]['transferredDivName'],
-            "Transfer SubDivision": this.showData[i]['transferredSudName'],
-            "Transfer Date": this.showData[i]['potTransferAt'],
-            "Transfer Remark": this.showData[i]['potTransferComment'],
+             "Total Pothole" : this.showData[i]['totalCount'],
+              "Assigned Pothole" : this.showData[i]['assignCount'],
+              "Closed Pothole" : this.showData[i]['completedCount'],
+              "Pending Pothole" : this.showData[i]['pendingCount'],
+
              })
          }
       console.log(this.dataSource.data);
@@ -214,18 +371,18 @@ export class ReportComponent implements OnInit, AfterViewInit {
 
     }
               //  to show excel
-    //    showInExcel(){
-    //       const worksheet: XLSX.WorkSheet = XLSX.utils.json_to_sheet(this.data);
-    //       const workbook: XLSX.WorkBook = { Sheets: { 'data': worksheet }, SheetNames: ['data'] };
-    //       const excelBuffer: any = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' });
-    //       this.saveAsExcelFile(excelBuffer, 'TransferReport');
-    //    }
-    //   //  to save excel
-    // saveAsExcelFile(buffer:any, fileName:string){
-    //        const data: Blob = new Blob([buffer], {type: this.EXCEL_TYPE});
-    //        FileSaver.saveAs(data, fileName + '_export_' + new  Date().getTime() + this.EXCEL_EXTENSION);
+       showInExcel(){
+          const worksheet: XLSX.WorkSheet = XLSX.utils.json_to_sheet(this.data);
+          const workbook: XLSX.WorkBook = { Sheets: { 'data': worksheet }, SheetNames: ['data'] };
+          const excelBuffer: any = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' });
+          this.saveAsExcelFile(excelBuffer, 'SummaryReport');
+       }
+      //  to save excel
+    saveAsExcelFile(buffer:any, fileName:string){
+           const data: Blob = new Blob([buffer], {type: this.EXCEL_TYPE});
+           FileSaver.saveAs(data, fileName + '_export_' + new  Date().getTime() + this.EXCEL_EXTENSION);
 
-    // }
+    }
 
 }
 
