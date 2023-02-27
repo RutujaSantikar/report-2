@@ -1,0 +1,20 @@
+<div class="login-cont">
+   <form action="" [formGroup]="loginForm">
+   <mat-form-field appearance="outline" class="w-full">
+      <mat-label>Username</mat-label>
+      <input matInput formControlName="username">
+    </mat-form-field><br>
+
+
+
+    <mat-form-field appearance="outline" class="w-full">
+      <mat-label>Password</mat-label>
+      <input matInput class="w-full" formControlName="password">
+    </mat-form-field>
+   </form>
+
+   <div class="btn-cont">
+    <button mat-raised-button class="primary" color="primary" (click)="onSubmit()">Login</button>
+   </div>
+
+</div>
